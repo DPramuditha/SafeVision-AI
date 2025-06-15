@@ -1,12 +1,16 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:http/http.dart' as http;
+import 'package:safe_vision/weather_service/openweather_service.dart';
 import 'face_overlay_painter.dart';
 
 class FaceDetectionScreen extends StatefulWidget {
@@ -17,6 +21,45 @@ class FaceDetectionScreen extends StatefulWidget {
 }
 
 class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerProviderStateMixin {
+
+  OpenweatherService? _OpenweatherService;
+
+  void fetchWeather() async{
+    try{
+      print("Fetching weather data...");
+      // final city = await CurrentLocation().getCurrentLocation();
+      String city = "Colombo";
+
+      if(city.startsWith('❌') || city.contains('denied')){
+        print("❌Error fetching weather data: $city");
+        return;
+      }
+      String apiKey = dotenv.env['WEATHER_API_KEY'] ?? "";
+      print('✅Current Location: $city');
+
+      final url = "https://api.openweathermap.org/data/2.5/weather?q=$city&appid=$apiKey&units=metric";
+      final response = await http.get(Uri.parse(url));
+
+      if(response.statusCode == 200){
+        final decodebody = utf8.decode(response.bodyBytes);
+        final jsondecode = jsonDecode(decodebody);
+        print("✅Weather data fetched successfully: $jsondecode");
+        setState(() {
+          _OpenweatherService = OpenweatherService.fromJson(jsondecode);
+        });
+        print("✅Weather fetched successfully}");
+      }
+      else{
+        print("❌Error fetching weather data: ${response.statusCode}");
+      }
+    }
+    catch (e) {
+      print("❌Error fetching weather data: $e");
+    }
+
+  }
+
+
   CameraController? _cameraController;
   FaceDetector? _faceDetector;
   bool _isDetecting = false;
@@ -54,6 +97,7 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
     super.initState();
     _initializeAnimations();
     _initializeCameraAndDetector();
+    fetchWeather();
   }
 
   void _initializeAnimations() {
@@ -583,7 +627,7 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      '28°C Clear',
+                                      '${_OpenweatherService?.temp?.toStringAsFixed(1) ?? '0.0'}°C ${_OpenweatherService?.main ?? ''}',
                                       style: GoogleFonts.spaceGrotesk(
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,
@@ -591,7 +635,7 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
                                       ),
                                     ),
                                     Text(
-                                      'Excellent visibility',
+                                      '${_OpenweatherService?.description ?? 'Loading...'}',
                                       style: GoogleFonts.spaceGrotesk(
                                         fontSize: 10,
                                         color: Colors.white70,

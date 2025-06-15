@@ -4,7 +4,7 @@ class OpenweatherService {
   final String description;
   final double temp;
   final double feelsLike;
-  final double humidity;
+  final int humidity;
   final double windSpeed;
   final double rain;
 
@@ -26,7 +26,7 @@ class OpenweatherService {
       description: json['weather'][0]['description'] ?? 'No description available',
       temp: (json['main']['temp'] as num).toDouble(),
       feelsLike: (json['main']['feels_like'] as num).toDouble(),
-      humidity: (json['main']['humidity'] as num).toDouble(),
+      humidity: (json['main']['humidity'] as num).toInt(),
       windSpeed: (json['wind']['speed'] as num).toDouble(),
       rain: (json['rain']?['1h'] as num?)?.toDouble() ?? 0.0,
     );

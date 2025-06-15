@@ -1,12 +1,16 @@
+import 'dart:convert';
 import 'dart:math';
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http show get;
 import 'package:lottie/lottie.dart';
 import 'package:safe_vision/pages/face_detection_screen.dart';
 import 'package:safe_vision/pages/face_detection_screen1.dart';
+import 'package:safe_vision/weather_service/current_location.dart';
+import 'package:safe_vision/weather_service/openweather_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -16,6 +20,51 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+
+
+  OpenweatherService? _openweatherService;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchWeather();
+  }
+
+  void fetchWeather() async{
+    try{
+      print("Fetching weather data...");
+      // final city = await CurrentLocation().getCurrentLocation();
+      String city = "Colombo";
+
+      if(city.startsWith('❌') || city.contains('denied')){
+        print("❌Error fetching weather data: $city");
+        return;
+      }
+      String apiKey = dotenv.env['WEATHER_API_KEY'] ?? "";
+      print('✅Current Location: $city');
+
+      // final url = "http://api.weatherapi.com/v1/current.json?key=$apiKey&q=$city&aqi=yes";
+      final url = "https://api.openweathermap.org/data/2.5/weather?q=$city&appid=$apiKey&units=metric";
+      final response = await http.get(Uri.parse(url));
+
+      if(response.statusCode == 200){
+        final decodebody = utf8.decode(response.bodyBytes);
+        final jsondecode = jsonDecode(decodebody);
+        print("✅Weather data fetched successfully: $jsondecode");
+        setState(() {
+          _openweatherService = OpenweatherService.fromJson(jsondecode);
+        });
+        print("✅Weather fetched successfully}");
+      }
+      else{
+        print("❌Error fetching weather data: ${response.statusCode}");
+      }
+    }
+    catch (e) {
+      print("❌Error fetching weather data: $e");
+    }
+
+  }
 
 
   @override
@@ -175,7 +224,7 @@ class _HomePageState extends State<HomePage> {
             ),
             SizedBox(height: 10),
             Container(
-              height: MediaQuery.of(context).size.height * 0.45,
+              height: MediaQuery.of(context).size.height * 0.40,
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Stack(
                 alignment: Alignment.center,
@@ -350,7 +399,7 @@ class _HomePageState extends State<HomePage> {
                     final y = radius * sin(angle);
                     
                     return Positioned(
-                      left: (MediaQuery.of(context).size.width * 0.4) + x - 25,
+                      left: (MediaQuery.of(context).size.width * 0.44) + x - 25,
                       top: (MediaQuery.of(context).size.width * 0.43) + y - 25,
                       child: Container(
                         width: 50,
@@ -675,7 +724,7 @@ class _HomePageState extends State<HomePage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Colombo',
+                              '${_openweatherService?.name ?? 'Loading...'}',
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 16,
                                 color: Colors.white70,
@@ -684,7 +733,7 @@ class _HomePageState extends State<HomePage> {
                               .fadeIn(duration: 800.ms, delay: 400.ms)
                               .slideY(begin: 0.3, duration: 600.ms),
                             Text(
-                              '28°C',
+                              '${_openweatherService?.temp?.toStringAsFixed(1) ?? '0.0'}°C',
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 32,
                                 fontWeight: FontWeight.bold,
@@ -697,7 +746,7 @@ class _HomePageState extends State<HomePage> {
                               .animate(onPlay: (controller) => controller.repeat())
                               .shimmer(duration: 3.seconds, delay: 2.seconds),
                             Text(
-                              'Partly Cloudy',
+                              '${_openweatherService?.description ?? 'Loading...'}',
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 14,
                                 color: Colors.white70,
@@ -720,7 +769,7 @@ class _HomePageState extends State<HomePage> {
                                   Icon(Icons.visibility, color: Colors.white, size: 16),
                                   const SizedBox(width: 5),
                                   Text(
-                                    'Good',
+                                    '${_openweatherService?.humidity?.toString() ?? '0'}%',
                                     style: GoogleFonts.spaceGrotesk(
                                       fontSize: 12,
                                       color: Colors.white,
@@ -743,7 +792,7 @@ class _HomePageState extends State<HomePage> {
                                   Icon(Icons.air, color: Colors.white, size: 16),
                                   const SizedBox(width: 5),
                                   Text(
-                                    '15 km/h',
+                                    '${_openweatherService?.windSpeed?.toStringAsFixed(1) ?? '0.0'} km/h',
                                     style: GoogleFonts.spaceGrotesk(
                                       fontSize: 12,
                                       color: Colors.white,
