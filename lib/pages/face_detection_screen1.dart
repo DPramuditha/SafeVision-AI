@@ -12,6 +12,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:http/http.dart' as http;
 import 'package:safe_vision/weather_service/openweather_service.dart';
 import 'face_overlay_painter.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class FaceDetectionScreen extends StatefulWidget {
   const FaceDetectionScreen({super.key});
@@ -91,6 +92,11 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
   
   // Toggle for testing with mock faces
   bool _useMockFaces = true; // Set to true for emulator testing
+  
+  // Audio player for alerts
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  DateTime? _eyesClosedStartTime;
+  bool _alertPlaying = false;
   
   @override
   void initState() {
@@ -469,6 +475,9 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
     
     debugPrint('Eye openness: Left=$leftEyeOpen, Right=$rightEyeOpen, Avg=$averageEyeOpenness');
     
+    // Add this line to check eye status for audio alert
+    _onEyeStateChanged(averageEyeOpenness < 0.3);
+    
     if (averageEyeOpenness < 0.3) {
       _closedEyesFrameCount++;
       debugPrint('Eyes closed count: $_closedEyesFrameCount');
@@ -530,6 +539,64 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
     }
   }
 
+  void _onEyeStateChanged(bool eyesClosed) {
+    if (eyesClosed) {
+      // Eyes are closed
+      if (_eyesClosedStartTime == null) {
+        _eyesClosedStartTime = DateTime.now();
+        debugPrint('👁️ Eyes closed - starting timer');
+      } else {
+        // Check if eyes have been closed for 2 seconds
+        final duration = DateTime.now().difference(_eyesClosedStartTime!);
+        if (duration.inSeconds >= 2 && !_alertPlaying) {
+          debugPrint('👁️ Eyes closed for 2 seconds - playing alert');
+          _playAlertAndShowMessage();
+        }
+      }
+    } else {
+      // Eyes are open
+      if (_eyesClosedStartTime != null) {
+        debugPrint('👁️ Eyes opened - resetting timer');
+      }
+      _eyesClosedStartTime = null;
+      _alertPlaying = false;
+      if (_alertMessage.isNotEmpty && !_isAlertActive) {
+        setState(() {
+          _alertMessage = '';
+        });
+      }
+    }
+  }
+
+  Future<void> _playAlertAndShowMessage() async {
+    if (_alertPlaying) return;
+    
+    setState(() {
+      _alertPlaying = true;
+      _alertMessage = '⚠️ WAKE UP! Eyes closed for too long!';
+    });
+
+    try {
+      await _audioPlayer.play(AssetSource('alert.mp3'));
+      debugPrint('🔊 Alert audio played successfully');
+      
+      // Also trigger haptic feedback
+      HapticFeedback.heavyImpact();
+    } catch (e) {
+      debugPrint('❌ Error playing audio: $e');
+    }
+
+    // Clear message after 5 seconds
+    Future.delayed(Duration(seconds: 5), () {
+      if (mounted && !_isAlertActive) {
+        setState(() {
+          _alertMessage = '';
+          _alertPlaying = false;
+        });
+      }
+    });
+  }
+
   @override
   void dispose() {
     _pulseAnimationController.dispose();
@@ -538,6 +605,7 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
     _cameraController?.dispose();
     _faceDetector?.close();
     _fatigueCheckTimer?.cancel();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -1180,5 +1248,140 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
     .animate()
     .fadeIn(duration: 1200.ms)
     .slideY(begin: 0.5, duration: 800.ms, curve: Curves.easeOutCubic);
+  }
+}
+
+class EyeDetectionService {
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  DateTime? _eyesClosedStartTime;
+  bool _alertPlayed = false;
+  
+  void checkEyeStatus(bool eyesOpen) {
+    if (!eyesOpen) {
+      // Eyes are closed
+      if (_eyesClosedStartTime == null) {
+        _eyesClosedStartTime = DateTime.now();
+        _alertPlayed = false;
+      } else {
+        // Check if eyes have been closed for 2 seconds
+        final duration = DateTime.now().difference(_eyesClosedStartTime!);
+        if (duration.inSeconds >= 2 && !_alertPlayed) {
+          _playAlertSound();
+          _alertPlayed = true;
+        }
+      }
+    } else {
+      // Eyes are open
+      _eyesClosedStartTime = null;
+      _alertPlayed = false;
+    }
+  }
+
+  Future<void> _playAlertSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('alert.mp3'));
+      print('✅Audio played successfully');
+    } catch (e) {
+      print('❌Error playing audio: $e');
+    }
+  }
+}
+
+class EyeDetectionScreen extends StatefulWidget {
+  @override
+  _EyeDetectionScreenState createState() => _EyeDetectionScreenState();
+}
+
+class _EyeDetectionScreenState extends State<EyeDetectionScreen> {
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  DateTime? _eyesClosedStartTime;
+  bool _alertPlayed = false;
+  bool _eyesOpen = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Start your eye detection timer
+    _startEyeDetection();
+  }
+
+  void _startEyeDetection() {
+    // Simulate eye detection - replace with your actual detection logic
+    Stream.periodic(Duration(milliseconds: 100), (i) => i)
+        .listen((_) {
+      // Replace this with your actual eye detection result
+      bool detectedEyesOpen = _eyesOpen; // Your detection logic here
+      _checkEyeStatus(detectedEyesOpen);
+    });
+  }
+
+  void _checkEyeStatus(bool eyesOpen) {
+    if (!eyesOpen) {
+      // Eyes are closed
+      if (_eyesClosedStartTime == null) {
+        _eyesClosedStartTime = DateTime.now();
+        _alertPlayed = false;
+        print('☑️Eyes closed - starting timer');
+      } else {
+        // Check if eyes have been closed for 2 seconds
+        final duration = DateTime.now().difference(_eyesClosedStartTime!);
+        if (duration.inSeconds >= 2 && !_alertPlayed) {
+          print('☑️Eyes closed for 2 seconds - playing alert');
+          _playAlertSound();
+          _alertPlayed = true;
+        }
+      }
+    } else {
+      // Eyes are open, reset timer
+      if (_eyesClosedStartTime != null) {
+        print('Eyes opened - resetting timer');
+      }
+      _eyesClosedStartTime = null;
+      _alertPlayed = false;
+    }
+  }
+
+  Future<void> _playAlertSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('alert.mp3'));
+      print('✅Alert sound played');
+    } catch (e) {
+      print('❌Error playing alert sound: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Eye Detection')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Eyes: ${_eyesOpen ? "Open" : "Closed"}'),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _eyesOpen = !_eyesOpen;
+                });
+              },
+              child: Text('Toggle Eyes (Testing)'),
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _playAlertSound,
+              child: Text('Test Alert Sound'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
