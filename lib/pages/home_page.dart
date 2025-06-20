@@ -164,13 +164,37 @@ class _HomePageState extends State<HomePage> {
                 offset: Offset(0, 5),
               ),
             ],
-                ),
-                child: Icon(
-            Icons.person,
-            size: 30,
-            color: Colors.white,
-                ),
-              )
+              ),
+              child: GestureDetector(
+  onTap: () {
+    _showProfileBottomSheet(context);
+  },
+  child: Container(
+    width: 50,
+    height: 50,
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Colors.cyan, Colors.blue],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(50),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.cyan.withOpacity(0.4),
+          blurRadius: 10,
+          offset: Offset(0, 5),
+        ),
+      ],
+    ),
+    child: Icon(
+      Icons.person,
+      size: 30,
+      color: Colors.white,
+    ),
+  ),
+            ),
+              ),
             ),
             const SizedBox(width: 10),
             Padding(
@@ -1141,6 +1165,388 @@ class _HomePageState extends State<HomePage> {
               ),
           );
         },
+      ),
+    );
+  }
+
+  void _showProfileBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.white,
+              Colors.deepPurple.shade50,
+              Colors.purple.shade50,
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(30),
+            topRight: Radius.circular(30),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.deepPurple.withOpacity(0.3),
+              blurRadius: 20,
+              spreadRadius: 5,
+              offset: Offset(0, -10),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Handle bar
+            Container(
+              width: 50,
+              height: 5,
+              margin: EdgeInsets.only(top: 15, bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            
+            // Profile Header
+            Container(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  // Profile Avatar
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.cyan, Colors.blue, Colors.purple],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.deepPurple.withOpacity(0.4),
+                          blurRadius: 15,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.person,
+                      size: 50,
+                      color: Colors.white,
+                    ),
+                  ).animate()
+                    .scale(duration: 600.ms, curve: Curves.elasticOut)
+                    .fadeIn(duration: 800.ms),
+                
+                  SizedBox(height: 15),
+                
+                  Text(
+                    'Dimuthu Pramuditha',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.deepPurple.shade800,
+                    ),
+                  ).animate()
+                    .fadeIn(duration: 800.ms, delay: 200.ms)
+                    .slideY(begin: 0.3, duration: 600.ms),
+                
+                  Text(
+                    'Professional Driver',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ).animate()
+                    .fadeIn(duration: 800.ms, delay: 400.ms)
+                    .slideY(begin: 0.3, duration: 600.ms),
+                ],
+              ),
+            ),
+            
+            // Profile Details & Settings
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                children: [
+                  _buildProfileDetailCard(
+                    icon: Icons.directions_bus,
+                    title: 'Bus Information',
+                    subtitle: 'Bus Number: 1234\nRoute: Colombo - Galle',
+                    color: Colors.blue,
+                  ),
+                
+                  _buildProfileDetailCard(
+                    icon: Icons.phone,
+                    title: 'Contact Information',
+                    subtitle: '+94 77 123 4567\ndimuthu@safevision.lk',
+                    color: Colors.green,
+                  ),
+                
+                  _buildProfileDetailCard(
+                    icon: Icons.security,
+                    title: 'License Information',
+                    subtitle: 'License No: DL123456789\nExpiry: 2025-12-31',
+                    color: Colors.orange,
+                  ),
+                
+                  // Settings Section
+                  Container(
+                    margin: EdgeInsets.only(top: 20, bottom: 10),
+                    child: Text(
+                      'Settings',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple.shade800,
+                      ),
+                    ),
+                  ),
+                
+                  _buildSettingItem(
+                    icon: Icons.notifications,
+                    title: 'Notifications',
+                    subtitle: 'Manage alert settings',
+                    onTap: () {
+
+                    },
+                  ),
+                
+                  _buildSettingItem(
+                    icon: Icons.volume_up,
+                    title: 'Audio Settings',
+                    subtitle: 'Alert sounds and volume',
+                    onTap: () {
+                    },
+                  ),
+                
+                  _buildSettingItem(
+                    icon: Icons.security,
+                    title: 'Safety Settings',
+                    subtitle: 'Detection sensitivity',
+                    onTap: () {
+                    },
+                  ),
+                
+                  _buildSettingItem(
+                    icon: Icons.help,
+                    title: 'Help & Support',
+                    subtitle: 'Get help and support',
+                    onTap: () {
+                    },
+                  ),
+                
+                  SizedBox(height: 20),
+                
+                  // Logout Button
+                  Container(
+                    width: double.infinity,
+                    height: 50,
+                    margin: EdgeInsets.symmetric(vertical: 10),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _showLogoutDialog(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade600,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        elevation: 5,
+                      ),
+                      child: Text(
+                        'Logout',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ).animate()
+                    .fadeIn(duration: 800.ms, delay: 1000.ms)
+                    .slideY(begin: 0.3, duration: 600.ms),
+                
+                  SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ).animate()
+        .slideY(begin: 1, duration: 600.ms, curve: Curves.easeOutBack)
+        .fadeIn(duration: 400.ms),
+  );
+}
+
+  // Helper method for profile detail cards
+  Widget _buildProfileDetailCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+  }) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 15),
+      padding: EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: color.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.1),
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 25),
+          ),
+          SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.deepPurple.shade800,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate();
+      // .fadeIn(duration: 800.ms);
+      // .slideX(begin: 0.3, duration: 600.ms);
+  }
+
+  // Helper method for settings items
+  Widget _buildSettingItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 5,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListTile(
+        leading: Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.deepPurple.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: Colors.deepPurple, size: 20),
+        ),
+        title: Text(
+          title,
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.deepPurple.shade800,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        onTap: onTap,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+      ),
+    ).animate()
+      .fadeIn(duration: 600.ms)
+      .slideX(begin: 0.2, duration: 400.ms);
+  }
+
+  // Logout confirmation dialog
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Logout',
+          style: GoogleFonts.spaceGrotesk(
+            fontWeight: FontWeight.bold,
+            color: Colors.deepPurple.shade800,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to logout?',
+          style: GoogleFonts.spaceGrotesk(color: Colors.grey[600]),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.spaceGrotesk(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Handle logout logic here
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Logged out successfully')),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(
+              'Logout',
+              style: GoogleFonts.spaceGrotesk(color: Colors.white),
+            ),
+          ),
+        ],
       ),
     );
   }
