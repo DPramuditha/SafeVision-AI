@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'package:safe_vision/weather_service/openweather_service.dart';
 import 'face_overlay_painter.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:safe_vision/llm_alert/llm_alert_service.dart'; // Add this import
 
 class FaceDetectionScreen extends StatefulWidget {
   const FaceDetectionScreen({super.key});
@@ -22,7 +23,6 @@ class FaceDetectionScreen extends StatefulWidget {
 }
 
 class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerProviderStateMixin {
-
   OpenweatherService? _OpenweatherService;
 
   void fetchWeather() async{
@@ -97,11 +97,22 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
   final AudioPlayer _audioPlayer = AudioPlayer();
   DateTime? _eyesClosedStartTime;
   bool _alertPlaying = false;
+
+  // Add LLM service
+  late LlmAlertService _llmAlertService;
   
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
+    
+    // Initialize LLM service with API keys from .env
+    _llmAlertService = LlmAlertService(
+      openWeatherApiKey: dotenv.env['WEATHER_API_KEY'] ?? '',
+      openAiApiKey: dotenv.env['OPENAI_API_KEY'] ?? '',
+      driverName: 'Dimuthu',
+    );
+    
     _initializeCameraAndDetector();
     fetchWeather();
   }
@@ -494,107 +505,414 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
     }
   }
 
-  void _triggerFatigueAlert(String message) {
-    if (!_isAlertActive) {
-      _isAlertActive = true;
-      _alertMessage = message;
-      
-      debugPrint('FATIGUE ALERT: $message');
-      
-      HapticFeedback.heavyImpact();
-      
-      _alertAnimationController.forward().then((_) {
-        _alertAnimationController.reverse().then((_) {
-          _alertAnimationController.forward();
-        });
-      });
-      
-      Future.delayed(const Duration(seconds: 5), () {
-        if (mounted) {
-          setState(() {
-            _isAlertActive = false;
-            _alertMessage = "";
-          });
-          _alertAnimationController.reset();
-        }
-      });
-    }
-  }
-
   void _updateBlinkRate() {
     if (_sessionStartTime != null) {
-      final sessionDuration = DateTime.now().difference(_sessionStartTime!).inMinutes;
-      if (sessionDuration > 0) {
-        setState(() {
-          _blinkRate = _totalBlinkCount / sessionDuration;
-        });
+      final sessionDuration = DateTime.now().difference(_sessionStartTime!);
+      final minutes = sessionDuration.inMinutes;
+      if (minutes > 0) {
+        _blinkRate = _totalBlinkCount / minutes;
         debugPrint('Blink rate updated: $_blinkRate blinks/min');
       }
     }
   }
 
   void _checkFatigueIndicators() {
-    if (_blinkRate > 0 && _blinkRate < 5) {
-      _triggerFatigueAlert("Low blink rate detected. You may be getting tired.");
+    // Check for various fatigue indicators
+    if (_blinkRate < 12 || _blinkRate > 30) {
+      // Abnormal blink rate
+      debugPrint('Abnormal blink rate detected: $_blinkRate');
     }
+    
+    // Check driving duration
+    if (_sessionStartTime != null) {
+      final drivingMinutes = DateTime.now().difference(_sessionStartTime!).inMinutes;
+      if (drivingMinutes > 60) {
+        // Driving for over an hour
+        debugPrint('Long driving session: ${drivingMinutes} minutes');
+      }
+    }
+    
+    // Additional fatigue checks can be added here
+    debugPrint('Fatigue indicators check completed');
   }
 
   void _onEyeStateChanged(bool eyesClosed) {
     if (eyesClosed) {
-      // Eyes are closed
       if (_eyesClosedStartTime == null) {
         _eyesClosedStartTime = DateTime.now();
-        debugPrint('👁️ Eyes closed - starting timer');
+        _alertPlaying = false;
       } else {
-        // Check if eyes have been closed for 2 seconds
         final duration = DateTime.now().difference(_eyesClosedStartTime!);
         if (duration.inSeconds >= 2 && !_alertPlaying) {
-          debugPrint('👁️ Eyes closed for 2 seconds - playing alert');
-          _playAlertAndShowMessage();
+          _playAlertSound();
+          _alertPlaying = true;
         }
       }
     } else {
-      // Eyes are open
-      if (_eyesClosedStartTime != null) {
-        debugPrint('👁️ Eyes opened - resetting timer');
-      }
       _eyesClosedStartTime = null;
       _alertPlaying = false;
-      if (_alertMessage.isNotEmpty && !_isAlertActive) {
-        setState(() {
-          _alertMessage = '';
-        });
-      }
     }
   }
 
-  Future<void> _playAlertAndShowMessage() async {
-    if (_alertPlaying) return;
-    
-    setState(() {
-      _alertPlaying = true;
-      _alertMessage = '⚠️ WAKE UP! Eyes closed for too long!';
-    });
-
+  Future<void> _playAlertSound() async {
     try {
       await _audioPlayer.play(AssetSource('alert.mp3'));
-      debugPrint('🔊 Alert audio played successfully');
-      
-      // Also trigger haptic feedback
-      HapticFeedback.heavyImpact();
+      debugPrint('✅Alert sound played');
     } catch (e) {
-      debugPrint('❌ Error playing audio: $e');
+      debugPrint('❌Error playing alert sound: $e');
     }
+  }
 
-    // Clear message after 5 seconds
-    Future.delayed(Duration(seconds: 5), () {
-      if (mounted && !_isAlertActive) {
-        setState(() {
-          _alertMessage = '';
-          _alertPlaying = false;
+  // Replace the existing _triggerFatigueAlert method
+  void _triggerFatigueAlert(String defaultMessage) async {
+    if (!_isAlertActive) {
+      _isAlertActive = true;
+
+      // Calculate driving duration
+      final duration = _sessionStartTime != null
+          ? DateTime.now().difference(_sessionStartTime!).inMinutes
+          : 0;
+
+      // Show loading popup first
+      _showLoadingAlert();
+
+      try {
+        // Generate LLM alert
+        final llmMessage = await _llmAlertService.generateContextualAlert(
+          blinkRate: _blinkRate,
+          closedEyesFrameCount: _closedEyesFrameCount,
+          noFaceFrameCount: _noFaceFrameCount,
+          drivingMinutes: duration,
+          fallbackMessage: defaultMessage,
+        );
+
+        // Close loading popup and show main alert
+        Navigator.of(context).pop(); // Close loading dialog
+        _showMainAlert(llmMessage);
+
+      } catch (e) {
+        // Close loading popup and show fallback alert
+        Navigator.of(context).pop(); // Close loading dialog
+        _showMainAlert(defaultMessage);
+        debugPrint('Error generating LLM alert: $e');
+      }
+
+      debugPrint('FATIGUE ALERT: $_alertMessage');
+      HapticFeedback.heavyImpact();
+
+      _alertAnimationController.forward().then((_) {
+        _alertAnimationController.reverse().then((_) {
+          _alertAnimationController.forward();
         });
+      });
+    }
+  }
+
+  // Show loading popup while generating LLM response
+  void _showLoadingAlert() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.orange.shade600,
+                Colors.deepOrange.shade700,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.orange.withOpacity(0.5),
+                blurRadius: 20,
+                spreadRadius: 5,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                strokeWidth: 3,
+              ).animate()
+                .scale(duration: 600.ms, curve: Curves.elasticOut),
+              
+              SizedBox(height: 20),
+              
+              Text(
+                'Analyzing Driving Conditions...',
+                style: GoogleFonts.spaceGrotesk(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ).animate()
+                .fadeIn(duration: 800.ms, delay: 200.ms)
+                .slideY(begin: 0.3, duration: 600.ms),
+              
+              SizedBox(height: 10),
+              
+              Text(
+                'Generating personalized alert...',
+                style: GoogleFonts.spaceGrotesk(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ).animate()
+                .fadeIn(duration: 800.ms, delay: 400.ms)
+                .slideY(begin: 0.3, duration: 600.ms),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Show main alert popup with LLM message
+  void _showMainAlert(String message) {
+    setState(() {
+      _alertMessage = message;
+    });
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          margin: EdgeInsets.symmetric(horizontal: 20),
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFFFF6B6B),
+                Color(0xFFE55353),
+                Color(0xFFCC4B4B),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(25),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0xFFFF6B6B).withOpacity(0.6),
+                blurRadius: 25,
+                spreadRadius: 8,
+                offset: Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Alert Icon with animation
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.white,
+                  size: 48,
+                ),
+              ).animate()
+                .scale(duration: 600.ms, curve: Curves.elasticOut)
+                .then()
+                .animate(onPlay: (controller) => controller.repeat())
+                .shake(duration: 500.ms, delay: 1.seconds),
+              
+              SizedBox(height: 20),
+              
+              // Alert Title
+              Text(
+                '⚠️ DROWSINESS ALERT',
+                style: GoogleFonts.spaceGrotesk(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+                textAlign: TextAlign.center,
+              ).animate()
+                .fadeIn(duration: 800.ms, delay: 200.ms)
+                .slideY(begin: 0.3, duration: 600.ms),
+              
+              SizedBox(height: 16),
+              
+              // LLM Generated Message
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  message,
+                  style: GoogleFonts.spaceGrotesk(
+                    color: Colors.white,
+                    fontSize: 16,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ).animate()
+                .fadeIn(duration: 1000.ms, delay: 400.ms)
+                .slideY(begin: 0.4, duration: 700.ms, curve: Curves.easeOutBack),
+              
+              SizedBox(height: 24),
+              
+              // Action Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        setState(() {
+                          _isAlertActive = false;
+                          _alertMessage = '';
+                        });
+                        _alertAnimationController.reset();
+                      },
+                      icon: Icon(Icons.check_circle, color: Color(0xFFFF6B6B)),
+                      label: Text(
+                        'I\'m Awake',
+                        style: GoogleFonts.spaceGrotesk(
+                          color: Color(0xFFFF6B6B),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        elevation: 5,
+                      ),
+                    ),
+                  ),
+                  
+                  SizedBox(width: 12),
+                  
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _stopMonitoring();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Take a break and rest well!'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      },
+                      icon: Icon(Icons.local_hotel, color: Colors.white),
+                      label: Text(
+                        'Take Break',
+                        style: GoogleFonts.spaceGrotesk(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white.withOpacity(0.2),
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          side: BorderSide(color: Colors.white, width: 1),
+                        ),
+                        elevation: 5,
+                      ),
+                    ),
+                  ),
+                ],
+              ).animate()
+                .fadeIn(duration: 1200.ms, delay: 600.ms)
+                .slideY(begin: 0.5, duration: 800.ms, curve: Curves.easeOutBack),
+              
+              SizedBox(height: 12),
+              
+              // Driving Stats
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildAlertStat('Blinks/min', _blinkRate.toStringAsFixed(1)),
+                    _buildAlertStat('Driving Time', 
+                      _sessionStartTime != null 
+                        ? '${DateTime.now().difference(_sessionStartTime!).inMinutes}m'
+                        : '0m'
+                    ),
+                    _buildAlertStat('Eyes Closed', '${_closedEyesFrameCount}f'),
+                  ],
+                ),
+              ).animate()
+                .fadeIn(duration: 1000.ms, delay: 800.ms)
+                .slideY(begin: 0.3, duration: 600.ms),
+            ],
+          ),
+        ),
+      ).animate()
+        .scale(begin: Offset(0.8, 0.8), duration: 600.ms, curve: Curves.elasticOut)
+        .fadeIn(duration: 400.ms),
+    );
+
+    // Auto-close after 10 seconds if no action taken
+    Future.delayed(Duration(seconds: 10), () {
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+        setState(() {
+          _isAlertActive = false;
+          _alertMessage = '';
+        });
+        _alertAnimationController.reset();
       }
     });
+  }
+
+  // Helper widget for alert stats
+  Widget _buildAlertStat(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: GoogleFonts.spaceGrotesk(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: GoogleFonts.spaceGrotesk(
+            color: Colors.white70,
+            fontSize: 10,
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -606,6 +924,7 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
     _faceDetector?.close();
     _fatigueCheckTimer?.cancel();
     _audioPlayer.dispose();
+    _llmAlertService.dispose(); // Add this line
     super.dispose();
   }
 
@@ -941,6 +1260,37 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
     );
   }
 
+  // Add this method to your _FaceDetectionScreenState class
+  void _testLLMAlert() async {
+    debugPrint('🧪 Testing LLM Alert Service...');
+    
+    // Show loading popup first
+    _showLoadingAlert();
+
+    try {
+      // Generate test LLM alert with mock data
+      final testMessage = await _llmAlertService.generateContextualAlert(
+        blinkRate: 18.5, // Mock blink rate
+        closedEyesFrameCount: 25, // Mock closed eyes count
+        noFaceFrameCount: 5, // Mock no face count
+        drivingMinutes: 45, // Mock driving time
+        fallbackMessage: "Test Alert: Please stay alert while driving!",
+      );
+
+      // Close loading popup and show main alert
+      Navigator.of(context).pop(); // Close loading dialog
+      _showMainAlert(testMessage);
+
+      debugPrint('✅ LLM Test Alert Generated: $testMessage');
+
+    } catch (e) {
+      // Close loading popup and show fallback alert
+      Navigator.of(context).pop(); // Close loading dialog
+      _showMainAlert("Test Alert: LLM service is working! Please stay alert while driving.");
+      debugPrint('❌ Error testing LLM alert: $e');
+    }
+  }
+
   Widget _buildStatsAndControls() {
     return Column(
       children: [
@@ -982,6 +1332,7 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
         
         const SizedBox(height: 20),
         
+        // Main Control Button
         GestureDetector(
           onTap: () {
             if (_isMonitoringActive) {
@@ -1033,36 +1384,55 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
           ),
         ),
 
-        
-        // ElevatedButton(
-        //   onPressed: () {
-        //     debugPrint('Camera initialized: $_isCameraInitialized');
-        //     debugPrint('Monitoring active: $_isMonitoringActive');
-        //     debugPrint('Camera controller null? ${_cameraController == null}');
-        //     if (_cameraController != null) {
-        //       debugPrint('Preview size: ${_cameraController!.value.previewSize}');
-        //       debugPrint('Camera direction: ${_cameraController!.description.lensDirection}');
-        //     }
-        //     _faceDetector?.close();
-        //     final options = FaceDetectorOptions(
-        //       enableContours: true,
-        //       enableClassification: true,
-        //       enableTracking: true,
-        //       performanceMode: FaceDetectorMode.fast,
-        //       minFaceSize: 0.05,
-        //     );
-        //     _faceDetector = FaceDetector(options: options);
-            
-        //     ScaffoldMessenger.of(context).showSnackBar(
-        //       const SnackBar(content: Text('Face detector reset')),
-        //     );
-        //   },
-        //   style: ElevatedButton.styleFrom(
-        //     backgroundColor: Colors.blue[800],
-        //     padding: const EdgeInsets.all(12),
-        //   ),
-        //   child: const Text('Reset Detector'),
-        // ),
+        const SizedBox(height: 16),
+
+        // Test LLM Alert Button (only this button remains)
+        GestureDetector(
+          onTap: _testLLMAlert,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.purple.shade600,
+                  Colors.purple.shade800,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.purple.withOpacity(0.4),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.psychology_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Test LLM Alert',
+                  style: GoogleFonts.spaceGrotesk(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ).animate()
+          .fadeIn(duration: 800.ms, delay: 200.ms)
+          .slideY(begin: 0.3, duration: 600.ms),
       ],
     );
   }
@@ -1351,7 +1721,7 @@ class _EyeDetectionScreenState extends State<EyeDetectionScreen> {
   }
 
   @override
-  void dispose() {
+  dispose() {
     _audioPlayer.dispose();
     super.dispose();
   }
