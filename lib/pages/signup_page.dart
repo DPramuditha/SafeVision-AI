@@ -1,8 +1,13 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
+import 'package:safe_vision/pages/login_page.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -34,27 +39,150 @@ class _SignupPageState extends State<SignupPage> {
   }
 
   Future<void> _handleSignup() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
       
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
+      if (userCredential.user != null) {
+        // Prepare user data
+        Map<String, dynamic> userData = {
+          'name': _nameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'busNumber': _busNumberController.text.trim(),
+          'route': _routeController.text.trim(),
+          'emergencyContact': _emergencyContactController.text.trim(),
+          'dateTime': DateTime.now().toIso8601String(),
+        };
+
+        print('Attempting to save user data: $userData'); // Debug print
+        
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .set(userData);
+            
+        print('User data saved successfully!'); // Debug print
+        
+        // Show success dialog with auto-dismiss
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  const Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Success!',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Account created successfully!\nRedirecting to login page...',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 16,
+                      color: Colors.grey[700],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  const LinearProgressIndicator(
+                    color: Color(0xFF9400D8),
+                    backgroundColor: Colors.grey,
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+        
+        // Auto-dismiss dialog and navigate after 3 seconds
+        Timer(const Duration(seconds: 3), () {
+          if (mounted) {
+            Navigator.pop(context); // Close the dialog
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginPage()),
+            );
+          }
+        });
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'An error occurred. Please try again.';
+      if (e.code == 'weak-password') {
+        errorMessage = 'The password provided is too weak.';
+      } else if (e.code == 'email-already-in-use') {
+        errorMessage = 'The account already exists for that email.';
+      } else if (e.code == 'invalid-email') {
+        errorMessage = 'The email address is not valid.';
+      }
       
+      await showDialog(
+        context: context, 
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Error'),
+            content: Text(errorMessage),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        }
+      );
+    } catch (e) {
+      // Handle any other errors
+      await showDialog(
+        context: context, 
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Error'),
+            content: Text('Failed to save user data: ${e.toString()}'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        }
+      );
+    } finally {
       setState(() {
         _isLoading = false;
       });
-      
-      // Handle signup logic here
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Welcome aboard! 🎉'),
-          backgroundColor: Color(0xFF9400D8),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
     }
   }
 
@@ -77,7 +205,7 @@ class _SignupPageState extends State<SignupPage> {
                   color: Colors.black87,
                   height: 1.2,
                 ),
-              ).animate().fadeIn(duration: 600.ms).slideX(begin: -50, end: 0),
+              ).animate().fadeIn(duration: 600.ms).slideX(begin: -0.2, end: 0.0), // Fixed: was begin: -50, end: 0
               
               const SizedBox(height: 8),
               
@@ -87,7 +215,7 @@ class _SignupPageState extends State<SignupPage> {
                   fontSize: 16,
                   color: Colors.grey[600],
                 ),
-              ).animate().fadeIn(duration: 600.ms, delay: 200.ms).slideX(begin: -30, end: 0),
+              ).animate().fadeIn(duration: 600.ms, delay: 200.ms).slideX(begin: -0.1, end: 0.0), // Fixed: was begin: -30, end: 0
               
               // Lottie Animation
               Center(
@@ -120,7 +248,7 @@ class _SignupPageState extends State<SignupPage> {
                         }
                         return null;
                       },
-                    ).animate().fadeIn(duration: 600.ms, delay: 600.ms).slideY(begin: 30, end: 0),
+                    ).animate().fadeIn(duration: 600.ms, delay: 600.ms).slideY(begin: 0.1, end: 0.0), // Fixed: was begin: 30, end: 0
                     
                     const SizedBox(height: 20),
                     
@@ -140,7 +268,7 @@ class _SignupPageState extends State<SignupPage> {
                         }
                         return null;
                       },
-                    ).animate().fadeIn(duration: 600.ms, delay: 700.ms).slideY(begin: 30, end: 0),
+                    ).animate().fadeIn(duration: 600.ms, delay: 700.ms).slideY(begin: 0.1, end: 0.0), // Fixed: was begin: 30, end: 0
                     
                     const SizedBox(height: 20),
 
@@ -253,7 +381,7 @@ class _SignupPageState extends State<SignupPage> {
                                 ),
                               ),
                       ),
-                    ).animate().fadeIn(duration: 600.ms, delay: 900.ms).slideY(begin: 30, end: 0),
+                    ).animate().fadeIn(duration: 600.ms, delay: 900.ms).slideY(begin: 0.1, end: 0.0), // Fixed: was begin: 30, end: 0
                     
                     const SizedBox(height: 30),
                     
@@ -282,7 +410,6 @@ class _SignupPageState extends State<SignupPage> {
                       width: double.infinity,
                       height: 56,
                       child: OutlinedButton.icon(
-                        
                         onPressed: () {},
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(color: Colors.grey[300]!),
@@ -291,7 +418,6 @@ class _SignupPageState extends State<SignupPage> {
                           ),
                           elevation: 10,
                         ),
-                        // icon: Icon(Icons.g_mobiledata, size: 24, color: Colors.grey[700]),
                         icon: SvgPicture.asset(
                           'assets/google.svg',
                           width: 24,
@@ -306,7 +432,7 @@ class _SignupPageState extends State<SignupPage> {
                           ),
                         ),
                       ),
-                    ).animate().fadeIn(duration: 600.ms, delay: 1100.ms).slideY(begin: 30, end: 0),
+                    ).animate().fadeIn(duration: 600.ms, delay: 1100.ms).slideY(begin: 0.1, end: 0.0), // Fixed: was begin: 30, end: 0
                   ],
                 ),
               ),
@@ -326,7 +452,7 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => Navigator.pop(context),
+                      onTap: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginPage())),
                       child: Text(
                         'Sign In',
                         style: GoogleFonts.spaceGrotesk(
