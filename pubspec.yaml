@@ -50,6 +50,7 @@ dependencies:
   http: ^1.4.0
   audioplayers: ^6.5.0
   flutter_tts: ^4.2.3
+  flutter_svg: ^2.2.0
 
 dev_dependencies:
   flutter_test:
@@ -80,6 +81,8 @@ flutter:
     - animation_assets/face_detection.json
     - assets/
     - assets/alert.mp3
+    - animation_assets/signup.json
+    - assets/google.svg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
