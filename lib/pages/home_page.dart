@@ -7,8 +7,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http show get;
 import 'package:lottie/lottie.dart';
+import 'package:safe_vision/firebase_service/login_user.dart';
 import 'package:safe_vision/pages/face_detection_screen.dart';
 import 'package:safe_vision/pages/face_detection_screen1.dart';
+import 'package:safe_vision/pages/login_page.dart';
 import 'package:safe_vision/weather_service/current_location.dart';
 import 'package:safe_vision/weather_service/openweather_service.dart';
 
@@ -19,15 +21,34 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-
-
+class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   OpenweatherService? _openweatherService;
+  late AnimationController _backgroundController;
+  late AnimationController _shimmerController;
 
   @override
   void initState() {
     super.initState();
+    
+    // Initialize animation controllers
+    _backgroundController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    )..repeat();
+    
+    _shimmerController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat();
+    
     fetchWeather();
+  }
+
+  @override
+  void dispose() {
+    _backgroundController.dispose();
+    _shimmerController.dispose();
+    super.dispose();
   }
 
   void fetchWeather() async{
@@ -366,21 +387,13 @@ class _HomePageState extends State<HomePage> {
                             color: Colors.white,
                             size: 60,
                           ),
-                        )
-                            .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                            .tint(
-                              begin: 0.0,
-                              end: 1.0,
-                              duration: 3.seconds,
-                              color: Colors.cyan,
-                            )
-                            .then()
-                            .animate(onPlay: (controller) => controller.repeat())
-                            .scale(
-                              begin: const Offset(1.0, 1.0),
-                              end: const Offset(1.2, 1.2),
-                              duration: 2.seconds,
-                            ),
+                        ).animate()
+                          .fadeIn(duration: 1.seconds)
+                          .scale(
+                            begin: const Offset(0.8, 0.8),
+                            end: const Offset(1.0, 1.0),
+                            duration: 1.seconds,
+                          ),
 
                         // Holographic scanning rings
                         ...List.generate(4, (index) {
@@ -1531,8 +1544,10 @@ class _HomePageState extends State<HomePage> {
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
-              // Handle logout logic here
+              LoginUser().logoutUser();
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginPage()));
+              // Navigator.pop(context);
+              // // Handle logout logic here
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Logged out successfully')),
               );
