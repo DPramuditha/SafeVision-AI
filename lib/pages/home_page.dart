@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:math';
 import 'dart:ui';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -8,10 +10,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http show get;
 import 'package:lottie/lottie.dart';
 import 'package:safe_vision/firebase_service/login_user.dart';
+import 'package:safe_vision/firebase_service/register_user.dart';
 import 'package:safe_vision/pages/face_detection_screen.dart';
 import 'package:safe_vision/pages/face_detection_screen1.dart';
 import 'package:safe_vision/pages/login_page.dart';
-import 'package:safe_vision/weather_service/current_location.dart';
 import 'package:safe_vision/weather_service/openweather_service.dart';
 
 class HomePage extends StatefulWidget {
@@ -25,6 +27,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   OpenweatherService? _openweatherService;
   late AnimationController _backgroundController;
   late AnimationController _shimmerController;
+
+  // Get current user email
+  String get currentUserEmail => FirebaseAuth.instance.currentUser?.email ?? '';
 
   @override
   void initState() {
@@ -87,9 +92,134 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   }
 
+    Stream<List<RegisterUser>> getUsers() {
+    return FirebaseFirestore.instance
+        .collection("users")
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) {
+              try {
+                return RegisterUser.fromJson(doc.data(), doc.id);
+              } catch (e) {
+                print('Error parsing user data: $e');
+                // Return a default user object if parsing fails
+                return RegisterUser(
+                  name: 'Unknown User',
+                  email: doc.data()['email'] ?? '',
+                  busNumber: 'N/A',
+                  route: 'N/A',
+                  emergencyContact: 0,
+                  dateTime: DateTime.now(),
+                );
+              }
+            })
+            .toList());
+  }
+
 
   @override
   Widget build(BuildContext context) {
+    return StreamBuilder<List<RegisterUser>>(
+      stream: getUsers(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF9400D8)),
+                      strokeWidth: 4,
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Loading user data...',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 60,
+                    color: Colors.red,
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Error: ${snapshot.error}',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 16,
+                      color: Colors.red,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.person_off,
+                    size: 60,
+                    color: Colors.grey,
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'No user data found',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final user = snapshot.data!.firstWhere(
+          (user) => user.email == currentUserEmail,
+          orElse: () => RegisterUser(
+            name: 'User', 
+            email: currentUserEmail,
+            busNumber: 'N/A',
+            route: 'N/A',
+            emergencyContact: 0,
+            dateTime: DateTime.now(),
+          ),
+        );
+
+        return _buildHomePage(user);
+      },
+    );
+  }
+
+  Widget _buildHomePage(RegisterUser user) {
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
@@ -188,7 +318,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
               child: GestureDetector(
   onTap: () {
-    _showProfileBottomSheet(context);
+    _showProfileBottomSheet(context, user);
   },
   child: Container(
     width: 50,
@@ -223,7 +353,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               child: Column(
                 children: [
             Text(
-              'Dimuthu Pramuditha',
+              user.name,
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -233,7 +363,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               .fadeIn(duration: 800.ms, delay: 600.ms)
               .slideX(begin: 0.3, duration: 600.ms),
             Text(
-              "Bus Number: 1234",
+              "Bus Number: ${user.busNumber}",
               style: GoogleFonts.spaceGrotesk(  
                 fontSize: 16,
                 color: Colors.white70,
@@ -242,7 +372,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               .fadeIn(duration: 800.ms, delay: 800.ms)
               .slideX(begin: 0.3, duration: 600.ms),
             Text(
-              "Route: Colombo - Galle",
+              "Route: ${user.route}",
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 16,
                 color: Colors.white70,
@@ -770,7 +900,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               .fadeIn(duration: 800.ms, delay: 400.ms)
                               .slideY(begin: 0.3, duration: 600.ms),
                             Text(
-                              '${_openweatherService?.temp?.toStringAsFixed(1) ?? '0.0'}°C',
+                              '${_openweatherService?.temp.toStringAsFixed(1) ?? '0.0'}°C',
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 32,
                                 fontWeight: FontWeight.bold,
@@ -806,7 +936,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   Icon(Icons.visibility, color: Colors.white, size: 16),
                                   const SizedBox(width: 5),
                                   Text(
-                                    '${_openweatherService?.humidity?.toString() ?? '0'}%',
+                                    '${_openweatherService?.humidity.toString() ?? '0'}%',
                                     style: GoogleFonts.spaceGrotesk(
                                       fontSize: 12,
                                       color: Colors.white,
@@ -829,7 +959,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   Icon(Icons.air, color: Colors.white, size: 16),
                                   const SizedBox(width: 5),
                                   Text(
-                                    '${_openweatherService?.windSpeed?.toStringAsFixed(1) ?? '0.0'} km/h',
+                                    '${_openweatherService?.windSpeed.toStringAsFixed(1) ?? '0.0'} km/h',
                                     style: GoogleFonts.spaceGrotesk(
                                       fontSize: 12,
                                       color: Colors.white,
@@ -913,6 +1043,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ),
                   ),
                   child: FloatingActionButton(
+                    heroTag: "home_fab", // Add unique heroTag
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -1182,7 +1313,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  void _showProfileBottomSheet(BuildContext context) {
+  void _showProfileBottomSheet(BuildContext context, RegisterUser user) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1261,7 +1392,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   SizedBox(height: 15),
                 
                   Text(
-                    'Dimuthu Pramuditha',
+                    user.name,
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -1292,14 +1423,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   _buildProfileDetailCard(
                     icon: Icons.directions_bus,
                     title: 'Bus Information',
-                    subtitle: 'Bus Number: 1234\nRoute: Colombo - Galle',
+                    subtitle: 'Bus Number: ${user.busNumber}\nRoute: ${user.route}',
                     color: Colors.blue,
                   ),
                 
                   _buildProfileDetailCard(
                     icon: Icons.phone,
                     title: 'Contact Information',
-                    subtitle: '+94 77 123 4567\ndimuthu@safevision.lk',
+                    subtitle: '${user.emergencyContact}\n${user.email}',
                     color: Colors.green,
                   ),
                 
