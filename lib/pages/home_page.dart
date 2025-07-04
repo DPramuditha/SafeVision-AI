@@ -129,14 +129,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 60,
-                    height: 60,
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF9400D8)),
-                      strokeWidth: 4,
-                    ),
+                    width: 250,
+                    height: 250,
+                    child: Lottie.asset(
+                      'animation_assets/loading.json',
+                      fit: BoxFit.cover,
+                    )
                   ),
-                  SizedBox(height: 20),
+                  // SizedBox(height: 20),
                   Text(
                     'Loading user data...',
                     style: GoogleFonts.spaceGrotesk(
