@@ -1,8 +1,12 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/services.dart';
+import 'package:safe_vision/firebase_service/login_user.dart';
+import 'package:safe_vision/pages/home_page.dart';
+import 'package:safe_vision/pages/signup_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -52,25 +56,62 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Future<void> _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
-      
-      // Add haptic feedback
-      HapticFeedback.mediumImpact();
-      
-      // Simulate login process
-      await Future.delayed(const Duration(seconds: 2));
-      
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+
+      await LoginUser().loginUser(email: email, password: password);
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text("Success"),
+            content: Text("✅User Logged in Successfully"),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => HomePage()),
+                  );
+                },
+                child: Text("OK"),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      print(e);
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text("Error"),
+            content: Text("❌Failed to Login User"),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: Text("OK"),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
       setState(() {
         _isLoading = false;
       });
-      
-      // Navigate to home page
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
     }
   }
 
@@ -81,565 +122,423 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         height: MediaQuery.of(context).size.height,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF1A0B2E),
-              Color(0xFF2D1B3D),
-              Color(0xFF503CB7),
-              Color(0xFF7C6FBF),
-              Color(0xFFE8E4F3),
+              Color(0xFF9400D8).withOpacity(0.1),
+              Color(0xFF9400D8).withOpacity(0.05),
+              Colors.white,
             ],
-            stops: [0.0, 0.25, 0.5, 0.75, 1.0],
+            stops: [0.0, 0.3, 1.0],
           ),
         ),
-        child: Stack(
-          children: [
-            // Floating particles background
-            Positioned.fill(
-              child: Container(),
-            ),
-
-            // Animated Background Elements
-            Positioned(
-              top: -150,
-              right: -150,
-              child: Container(
-                width: 350,
-                height: 350,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      Color(0xFF503CB7).withOpacity(0.3),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ).animate(controller: _backgroundController)
-                .rotate(duration: 30.seconds)
-                .scale(begin: Offset(0.8, 0.8), end: Offset(1.2, 1.2), duration: 15.seconds)
-                .then()
-                .scale(begin: Offset(1.2, 1.2), end: Offset(0.8, 0.8), duration: 15.seconds),
-            ),
-            
-            Positioned(
-              bottom: -200,
-              left: -200,
-              child: Container(
-                width: 500,
-                height: 500,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      Color(0xFF7C6FBF).withOpacity(0.2),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ).animate(controller: _backgroundController)
-                .rotate(duration: 25.seconds, begin: 1.0, end: 0.0)
-                .scale(begin: Offset(1.0, 1.0), end: Offset(1.3, 1.3), duration: 20.seconds)
-                .then()
-                .scale(begin: Offset(1.3, 1.3), end: Offset(1.0, 1.0), duration: 20.seconds),
-            ),
-
-            // Top geometric shapes
-            Positioned(
-              top: 100,
-              left: 50,
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF503CB7).withOpacity(0.4),
-                      Color(0xFF7C6FBF).withOpacity(0.2),
-                    ],
-                  ),
-                ),
-              ).animate(controller: _backgroundController)
-                .rotate(duration: 20.seconds)
-                .fadeIn(duration: 2.seconds)
-                .then()
-                .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                .moveY(begin: 0, end: -20, duration: 3.seconds),
-            ),
-
-            Positioned(
-              top: 200,
-              right: 80,
-              child: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF7C6FBF).withOpacity(0.5),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ).animate(controller: _backgroundController)
-                .rotate(duration: 15.seconds, begin: 1.0, end: 0.0)
-                .fadeIn(duration: 3.seconds)
-                .then()
-                .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                .moveX(begin: 0, end: 15, duration: 4.seconds),
-            ),
-
-            // Main Content
-            SafeArea(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 20),
-                      
-                      // Lottie Animation with enhanced container
-                      Container(
-                        height: 300,
-                        padding: EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(25),
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Colors.white.withOpacity(0.1),
-                              Colors.white.withOpacity(0.05),
-                            ],
-                          ),
-                          border: Border.all(
-                            color: Color(0xFF7C6FBF).withOpacity(0.3),
-                            width: 1,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 20,
-                              spreadRadius: 5,
-                              offset: Offset(0, 10),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  // Top Animation - signup.json
+                  Container(
+                    height: 280,
+                    width: double.infinity,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Background glow effect
+                        Container(
+                          height: 250,
+                          width: 250,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                Color(0xFF9400D8).withOpacity(0.2),
+                                Color(0xFF9400D8).withOpacity(0.1),
+                                Colors.transparent,
+                              ],
                             ),
-                          ],
+                          ),
+                        ).animate(onPlay: (controller) => controller.repeat())
+                          .scale(
+                            begin: Offset(0.8, 0.8),
+                            end: Offset(1.0, 1.0),
+                            duration: 3.seconds,
+                          )
+                          .then()
+                          .scale(
+                            begin: Offset(1.0, 1.0),
+                            end: Offset(0.8, 0.8),
+                            duration: 3.seconds,
+                          ),
+                        
+                        // Lottie Animation
+                        Container(
+                          height: 200,
+                          width: 200,
+                          child: Lottie.asset(
+                            'animation_assets/signup.json',
+                            fit: BoxFit.contain,
+                            repeat: true,
+                            animate: true,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Color(0xFF9400D8).withOpacity(0.1),
+                                ),
+                                child: Icon(
+                                  Icons.security,
+                                  size: 80,
+                                  color: Color(0xFF9400D8),
+                                ),
+                              );
+                            },
+                          ),
+                        ).animate()
+                          .fadeIn(duration: 1.5.seconds)
+                          .slideY(begin: -0.3, end: 0.0, duration: 1.2.seconds, curve: Curves.easeOutBack)
+                          .then()
+                          .animate(onPlay: (controller) => controller.repeat(reverse: true))
+                          .moveY(begin: 0, end: -5, duration: 2.seconds),
+                      ],
+                    ),
+                  ),
+                  
+                 
+                  
+                  // App Title
+                  Column(
+                    children: [
+                      Text(
+                        'Welcome Back',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF9400D8),
+                          height: 1.2,
                         ),
-                        child: Lottie.network(
-                          'https://lottie.host/22697308-5499-4beb-aa1d-8a83c779c72a/tZXWQbq2pT.json',
-                          fit: BoxFit.contain,
-                          repeat: true,
-                          animate: true,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
+                      ).animate()
+                        .fadeIn(duration: 800.ms, delay: 300.ms)
+                        .slideY(begin: 0.3, end: 0.0, duration: 600.ms),
+                      
+                      const SizedBox(height: 8),
+                      
+                      Text(
+                        'Sign in to SafeVision',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[600],
+                        ),
+                      ).animate()
+                        .fadeIn(duration: 800.ms, delay: 500.ms)
+                        .slideY(begin: 0.2, end: 0.0, duration: 600.ms),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 40),
+                  
+                  // Login Form with Background Animation
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xFF9400D8).withOpacity(0.1),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                          offset: Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Stack(
+                        children: [
+                          // Background Animation
+                          Positioned.fill(
+                            child: Container(
+                              child: Lottie.asset(
+                                'animation_assets/background.json',
+                                fit: BoxFit.cover,
+                                repeat: true,
+                                animate: true,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          Colors.white.withOpacity(0.9),
+                                          Color(0xFF9400D8).withOpacity(0.05),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                          
+                          // Semi-transparent overlay
+                          // Positioned.fill(
+                          //   child: Container(
+                          //     decoration: BoxDecoration(
+                          //       gradient: LinearGradient(
+                          //         begin: Alignment.topCenter,
+                          //         end: Alignment.bottomCenter,
+                          //         colors: [
+                          //           Colors.white.withOpacity(0.85),
+                          //           Colors.white.withOpacity(0.95),
+                          //         ],
+                          //       ),
+                          //     ),
+                          //   ),
+                          // ),
+                          
+                          // Form Content
+                          Padding(
+                            padding: const EdgeInsets.all(32.0),
+                            child: Form(
+                              key: _formKey,
                               child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(
-                                    Icons.security,
-                                    size: 80,
-                                    color: Color(0xFF7C6FBF),
-                                  ),
-                                  SizedBox(height: 16),
+                                  // Welcome Text
                                   Text(
-                                    'SafeVision',
+                                    'Login to Continue',
                                     style: GoogleFonts.spaceGrotesk(
                                       fontSize: 24,
                                       fontWeight: FontWeight.bold,
-                                      color: Color(0xFF503CB7),
+                                      color: Color(0xFF9400D8),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ).animate()
-                        .fadeIn(duration: 1.5.seconds)
-                        .slideY(begin: -0.2, duration: 1.2.seconds, curve: Curves.easeOutBack)
-                        .then()
-                        .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                        .moveY(begin: 0, end: -10, duration: 3.seconds),
-                      
-                      const SizedBox(height: 20),
-                      
-                      // App Title and Subtitle
-                      Column(
-                        children: [
-                          Text(
-                            'SafeVision',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 42,
-                              fontWeight: FontWeight.w900,
-                              height: 1.0,
-                              foreground: Paint()
-                                ..shader = LinearGradient(
-                                  colors: [
-                                    Color(0xFF1A0B2E),
-                                    Color(0xFF503CB7),
-                                    Color(0xFF7C6FBF),
-                                  ],
-                                ).createShader(Rect.fromLTWH(0.0, 0.0, 250.0, 80.0)),
-                            ),
-                          ).animate()
-                            .fadeIn(duration: 1.5.seconds, delay: 0.3.seconds)
-                            .slideX(begin: -0.3, duration: 1.0.seconds, curve: Curves.easeOutQuart)
-                            .then()
-                            .animate(onPlay: (controller) => controller.repeat(reverse: true))
-                            .shimmer(duration: 3.seconds, color: Colors.white.withOpacity(0.3)),
-                          
-                          const SizedBox(height: 12),
-                          
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(25),
-                              gradient: LinearGradient(
-                                colors: [
-                                  Color(0xFF503CB7).withOpacity(0.3),
-                                  Color(0xFF7C6FBF).withOpacity(0.4),
-                                ],
-                              ),
-                              border: Border.all(
-                                color: Color(0xFFE8E4F3).withOpacity(0.4),
-                                width: 1,
-                              ),
-                            ),
-                            child: Text(
-                              'Smart Driver Monitoring System',
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1A0B2E),
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ).animate()
-                            .fadeIn(duration: 1.5.seconds, delay: 0.6.seconds)
-                            .slideX(begin: 0.3, duration: 1.0.seconds, curve: Curves.easeOutQuart)
-                            .scale(begin: Offset(0.8, 0.8), duration: 0.8.seconds, delay: 0.8.seconds),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 40),
-                      
-                      // Login Form with modern glass effect
-                      Container(
-                        padding: const EdgeInsets.all(32),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Colors.white.withOpacity(0.15),
-                              Colors.white.withOpacity(0.05),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: Color(0xFF7C6FBF).withOpacity(0.3),
-                            width: 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 30,
-                              spreadRadius: 5,
-                              offset: const Offset(0, 15),
-                            ),
-                            BoxShadow(
-                              color: Colors.white.withOpacity(0.1),
-                              blurRadius: 10,
-                              spreadRadius: -5,
-                              offset: const Offset(0, -5),
-                            ),
-                          ],
-                        ),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Welcome Text with modern styling
-                              Container(
-                                padding: EdgeInsets.only(bottom: 8),
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    bottom: BorderSide(
-                                      color: Color(0xFF503CB7).withOpacity(0.4),
-                                      width: 2,
+                                  ).animate()
+                                    .fadeIn(duration: 600.ms, delay: 700.ms)
+                                    .slideX(begin: -0.3, end: 0.0, duration: 600.ms),
+                                  
+                                  const SizedBox(height: 8),
+                                  
+                                  Text(
+                                    'Enter your credentials to access your account',
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
                                     ),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Welcome Back',
-                                  style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF1A0B2E),
-                                    height: 1.2,
-                                  ),
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 8),
-                              
-                              Text(
-                                'Sign in to continue monitoring',
-                                style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF503CB7),
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 32),
-                              
-                              // Email Field
-                              _buildTextField(
-                                controller: _emailController,
-                                label: 'Email',
-                                icon: Icons.email_outlined,
-                                keyboardType: TextInputType.emailAddress,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your email';
-                                  }
-                                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                                    return 'Please enter a valid email';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              
-                              const SizedBox(height: 20),
-                              
-                              // Password Field
-                              _buildTextField(
-                                controller: _passwordController,
-                                label: 'Password',
-                                icon: Icons.lock_outline,
-                                isPassword: true,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter your password';
-                                  }
-                                  if (value.length < 6) {
-                                    return 'Password must be at least 6 characters';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              
-                              const SizedBox(height: 16),
-                              
-                              // Remember Me & Forgot Password
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
+                                  ).animate()
+                                    .fadeIn(duration: 600.ms, delay: 800.ms)
+                                    .slideX(begin: -0.2, end: 0.0, duration: 600.ms),
+                                  
+                                  const SizedBox(height: 32),
+                                  
+                                  // Email Field
+                                  _buildTextField(
+                                    controller: _emailController,
+                                    label: 'Email',
+                                    hint: 'Enter your email',
+                                    icon: Icons.email_outlined,
+                                    keyboardType: TextInputType.emailAddress,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Please enter your email';
+                                      }
+                                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                        return 'Please enter a valid email';
+                                      }
+                                      return null;
+                                    },
+                                  ).animate()
+                                    .fadeIn(duration: 600.ms, delay: 900.ms)
+                                    .slideY(begin: 0.3, end: 0.0, duration: 600.ms),
+                                  
+                                  const SizedBox(height: 20),
+                                  
+                                  // Password Field
+                                  _buildTextField(
+                                    controller: _passwordController,
+                                    label: 'Password',
+                                    hint: 'Enter your password',
+                                    icon: Icons.lock_outline,
+                                    isPassword: true,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Please enter your password';
+                                      }
+                                      if (value.length < 6) {
+                                        return 'Password must be at least 6 characters';
+                                      }
+                                      return null;
+                                    },
+                                  ).animate()
+                                    .fadeIn(duration: 600.ms, delay: 1000.ms)
+                                    .slideY(begin: 0.3, end: 0.0, duration: 600.ms),
+                                  
+                                  const SizedBox(height: 16),
+                                  
+                                  // Remember Me & Forgot Password
                                   Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Transform.scale(
-                                        scale: 0.8,
-                                        child: Checkbox(
-                                          value: _rememberMe,
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _rememberMe = value ?? false;
-                                            });
-                                          },
-                                          activeColor: Color(0xFF503CB7),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(4),
+                                      Row(
+                                        children: [
+                                          Transform.scale(
+                                            scale: 0.9,
+                                            child: Checkbox(
+                                              value: _rememberMe,
+                                              onChanged: (value) {
+                                                setState(() {
+                                                  _rememberMe = value ?? false;
+                                                });
+                                              },
+                                              activeColor: Color(0xFF9400D8),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                            ),
+                                          ),
+                                          Text(
+                                            'Remember me',
+                                            style: GoogleFonts.spaceGrotesk(
+                                              color: Colors.grey[600],
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      
+                                      TextButton(
+                                        onPressed: () {
+                                          // Handle forgot password
+                                        },
+                                        child: Text(
+                                          'Forgot Password?',
+                                          style: GoogleFonts.spaceGrotesk(
+                                            color: Color(0xFF9400D8),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
                                       ),
-                                      Text(
-                                        'Remember me',
-                                        style: GoogleFonts.spaceGrotesk(
-                                          color: Color(0xFF503CB7),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
                                     ],
-                                  ),
+                                  ).animate()
+                                    .fadeIn(duration: 600.ms, delay: 1100.ms),
                                   
-                                  TextButton(
-                                    onPressed: () {
-                                      // Handle forgot password
-                                    },
-                                    child: Text(
-                                      'Forgot Password?',
-                                      style: GoogleFonts.spaceGrotesk(
-                                        color: Color(0xFF503CB7),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
+                                  const SizedBox(height: 24),
+                                  
+                                  // Login Button
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 56,
+                                    child: ElevatedButton(
+                                      onPressed: _isLoading ? null : _handleLogin,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Color(0xFF9400D8),
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        elevation: 8,
+                                        shadowColor: Color(0xFF9400D8).withOpacity(0.3),
                                       ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              
-                              const SizedBox(height: 24),
-                              
-                              // Login Button with modern design
-                              Container(
-                                width: double.infinity,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Color(0xFF1A0B2E),
-                                      Color(0xFF503CB7),
-                                      Color(0xFF7C6FBF),
-                                    ],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Color(0xFF503CB7).withOpacity(0.4),
-                                      blurRadius: 25,
-                                      spreadRadius: 2,
-                                      offset: const Offset(0, 12),
-                                    ),
-                                    BoxShadow(
-                                      color: Colors.white.withOpacity(0.1),
-                                      blurRadius: 10,
-                                      spreadRadius: -2,
-                                      offset: const Offset(0, -2),
-                                    ),
-                                  ],
-                                ),
-                                child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _handleLogin,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                  ),
-                                  child: _isLoading
-                                      ? Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Text(
-                                              'Signing In...',
-                                              style: GoogleFonts.spaceGrotesk(
-                                                fontSize: 17,
-                                                fontWeight: FontWeight.w700,
-                                                color: Colors.white,
-                                                letterSpacing: 0.5,
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.login_rounded,
-                                              color: Colors.white,
-                                              size: 24,
-                                            ),
-                                            SizedBox(width: 8),
-                                            Text(
+                                      child: _isLoading
+                                          ? Row(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                SizedBox(
+                                                  width: 20,
+                                                  height: 20,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Text(
+                                                  'Signing In...',
+                                                  style: GoogleFonts.spaceGrotesk(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          : Text(
                                               'Sign In',
                                               style: GoogleFonts.spaceGrotesk(
-                                                fontSize: 17,
-                                                fontWeight: FontWeight.w700,
-                                                color: Colors.white,
-                                                letterSpacing: 0.5,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
                                               ),
                                             ),
-                                          ],
-                                        ),
-                                ),
-                              ).animate()
-                                .fadeIn(duration: 1.seconds, delay: 1.2.seconds)
-                                .slideY(begin: 0.3, duration: 0.8.seconds),
-                            ],
+                                    ),
+                                  ).animate()
+                                    .fadeIn(duration: 600.ms, delay: 1200.ms)
+                                    .slideY(begin: 0.3, end: 0.0, duration: 600.ms),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ).animate()
+                    .fadeIn(duration: 800.ms, delay: 600.ms)
+                    .slideY(begin: 0.4, end: 0.0, duration: 800.ms, curve: Curves.easeOutBack),
+                  
+                  const SizedBox(height: 32),
+                  
+                  // Sign Up Link
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Color(0xFF9400D8).withOpacity(0.2),
+                        width: 1,
+                      ),
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Don't have an account? ",
+                          style: GoogleFonts.spaceGrotesk(
+                            color: Colors.grey[600],
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                      ).animate()
-                        .fadeIn(duration: 1.2.seconds, delay: 0.8.seconds)
-                        .slideY(begin: 0.3, duration: 1.seconds, curve: Curves.easeOutBack),
-                      
-                      const SizedBox(height: 24),
-                      
-                      // Sign Up Option with modern styling
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.white.withOpacity(0.1),
-                              Colors.white.withOpacity(0.05),
-                            ],
-                          ),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.15),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(                            "Don't have an account? ",
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => const SignupPage()),
+                            );
+                          },
+                          child: Text(
+                            'Sign Up',
                             style: GoogleFonts.spaceGrotesk(
-                              color: Color(0xFF503CB7),
+                              color: Color(0xFF9400D8),
                               fontSize: 15,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w700,
                             ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                // Navigate to sign up
-                              },
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.symmetric(horizontal: 8),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: Text(
-                                'Sign Up',
-                                style: GoogleFonts.spaceGrotesk(
-                                  color: Color(0xFF1A0B2E),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                      ).animate()
-                        .fadeIn(duration: 1.2.seconds, delay: 1.8.seconds)
-                        .slideY(begin: 0.3, duration: 0.8.seconds),
-                      
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
+                      ],
+                    ),
+                  ).animate()
+                    .fadeIn(duration: 600.ms, delay: 1400.ms)
+                    .slideY(begin: 0.3, end: 0.0, duration: 600.ms),
+                  
+                  const SizedBox(height: 32),
+                ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -648,6 +547,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
+    required String hint,
     required IconData icon,
     bool isPassword = false,
     TextInputType keyboardType = TextInputType.text,
@@ -659,8 +559,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         Text(
           label,
           style: GoogleFonts.spaceGrotesk(
-            color: Color(0xFF503CB7),
-            fontSize: 15,
+            color: Color(0xFF9400D8),
+            fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -671,92 +571,72 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           keyboardType: keyboardType,
           validator: validator,
           style: GoogleFonts.spaceGrotesk(
-            color: Color(0xFF0D1B2A),
+            color: Colors.black87,
             fontSize: 16,
             fontWeight: FontWeight.w500,
           ),
           decoration: InputDecoration(
-            prefixIcon: Container(
-              margin: EdgeInsets.only(left: 12, right: 8),
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Color(0xFF415A77).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                icon,
-                color: Color(0xFF415A77),
-                size: 20,
-              ),
+            hintText: hint,
+            prefixIcon: Icon(
+              icon,
+              color: Color(0xFF9400D8).withOpacity(0.7),
+              size: 20,
             ),
             suffixIcon: isPassword
-                ? Container(
-                    margin: EdgeInsets.only(right: 8),
-                    child: IconButton(
-                      icon: Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Color(0xFF415A77).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                          color: Color(0xFF415A77),
-                          size: 20,
-                        ),
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
+                ? IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      color: Color(0xFF9400D8).withOpacity(0.7),
+                      size: 20,
                     ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
                   )
                 : null,
             filled: true,
             fillColor: Colors.white.withOpacity(0.8),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: Color(0xFF778DA9).withOpacity(0.3),
-                width: 1.5,
+                color: Colors.grey[300]!,
+                width: 1,
               ),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: Color(0xFF778DA9).withOpacity(0.3),
-                width: 1.5,
+                color: Colors.grey[300]!,
+                width: 1,
               ),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: Color(0xFF415A77),
-                width: 2.5,
-              ),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(
-                color: Colors.red.shade400,
+                color: Color(0xFF9400D8),
                 width: 2,
               ),
             ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: Colors.red.shade400,
-                width: 2.5,
+                color: Colors.red,
+                width: 1,
               ),
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: Colors.red,
+                width: 2,
+              ),
             ),
+            contentPadding: const EdgeInsets.all(16),
             hintStyle: GoogleFonts.spaceGrotesk(
-              color: Color(0xFF778DA9).withOpacity(0.7),
-              fontSize: 15,
+              color: Colors.grey[500],
+              fontSize: 14,
             ),
           ),
         ),
