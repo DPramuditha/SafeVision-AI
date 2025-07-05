@@ -231,11 +231,71 @@ class _SignupPageState extends State<SignupPage> {
               
               const SizedBox(height: 40),
               
-              // Form
-              Form(
-                key: _formKey,
-                child: Column(
-                  children: [
+              // Form with Background Animation
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0xFF9400D8).withOpacity(0.1),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Stack(
+                    children: [
+                      // Background Animation
+                      Positioned.fill(
+                        child: Lottie.asset(
+                          'animation_assets/signup_background.json',
+                          fit: BoxFit.cover,
+                          repeat: true,
+                          animate: true,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                   
+                                    Color(0xFF9400D8).withOpacity(0.05),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      
+                      // Semi-transparent overlay for better text readability
+                      // Positioned.fill(
+                      //   child: Container(
+                      //     decoration: BoxDecoration(
+                      //       gradient: LinearGradient(
+                      //         begin: Alignment.topCenter,
+                      //         end: Alignment.bottomCenter,
+                      //         colors: [
+                      //           Colors.white.withOpacity(0.85),
+                      //           Colors.white.withOpacity(0.90),
+                      //         ],
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
+                      
+                      // Form Content
+                      Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            children: [
                     // Name Field
                     _buildTextField(
                       controller: _nameController,
@@ -431,9 +491,13 @@ class _SignupPageState extends State<SignupPage> {
                             color: Colors.grey[700],
                           ),
                         ),
+                      ),                            ).animate().fadeIn(duration: 600.ms, delay: 1100.ms).slideY(begin: 0.1, end: 0.0), // Fixed: was begin: 30, end: 0
+                          ],
+                        ),
                       ),
-                    ).animate().fadeIn(duration: 600.ms, delay: 1100.ms).slideY(begin: 0.1, end: 0.0), // Fixed: was begin: 30, end: 0
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
               
