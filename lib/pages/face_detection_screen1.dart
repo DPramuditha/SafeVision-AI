@@ -64,32 +64,65 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
 
   String? fullname;
 
+  // Add this variable to track if LLM service is initialized
+  bool _isLLMServiceInitialized = false;
   
-  void _getUserInfo()async{
-    User? user = FirebaseAuth.instance.currentUser;
-    if(user != null){
-      String email = user.email ?? '';
+  // Update _getUserInfo method
+  Future<void> _getUserInfo() async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print("❌No user is currently logged in.");
+        return;
+      }
 
-      var snapshot = await FirebaseFirestore.instance
+      String email = user.email ?? '';
+      
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
           .collection('users')
           .where('email', isEqualTo: email)
+          .limit(1)
           .get();
 
-      if(snapshot.docs.isNotEmpty){
-        var userData = snapshot.docs.first.data();
+      if (snapshot.docs.isNotEmpty) {
+        var userData = snapshot.docs.first.data() as Map<String, dynamic>;
         setState(() {
-          fullname = userData['fullname'] ?? 'Unknown User';
+          fullname = userData['name'] ?? 'Unknown User';
         });
+        
+        // Initialize LLM service after getting user name
+        _initializeLLMService();
+        
+        print("✅User data found for email: $email");
+        print("✅Full Name: $fullname");
       } else {
         print("❌No user data found for email: $email");
+        setState(() {
+          fullname = 'Unknown User';
+        });
+        _initializeLLMService(); // Initialize with Unknown User
       }
+    } catch (e) {
+      print("❌Error fetching user data: $e");
+      setState(() {
+        fullname = 'Error Loading User';
+      });
+      _initializeLLMService(); // Initialize with error message
     }
-    else {
-      print("❌No user is currently logged in.");
-    }
-    
   }
 
+  // Add this method to initialize LLM service
+  void _initializeLLMService() {
+    if (!_isLLMServiceInitialized) {
+      _llmAlertService = LlmAlertService(
+        openWeatherApiKey: dotenv.env['WEATHER_API_KEY'] ?? '',
+        openAiApiKey: dotenv.env['OPENAI_API_KEY'] ?? '',
+        driverName: fullname ?? 'Unknown Driver',
+      );
+      _isLLMServiceInitialized = true;
+      print('✅ LLM Service initialized with driver name: ${fullname ?? 'Unknown Driver'}');
+    }
+  }
 
   CameraController? _cameraController;
   FaceDetector? _faceDetector;
@@ -135,17 +168,9 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
   void initState() {
     super.initState();
     _initializeAnimations();
-    
-    // Initialize LLM service with API keys from .env
-    _llmAlertService = LlmAlertService(
-      openWeatherApiKey: dotenv.env['WEATHER_API_KEY'] ?? '',
-      openAiApiKey: dotenv.env['OPENAI_API_KEY'] ?? '',
-      driverName: '${fullname ?? 'Unknown Driver'}',
-    );
-    
+    _getUserInfo(); // This will now initialize LLM service after getting user data
     _initializeCameraAndDetector();
     fetchWeather();
-    _getUserInfo();
   }
 
   void _initializeAnimations() {
