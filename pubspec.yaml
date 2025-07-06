@@ -85,6 +85,7 @@ flutter:
     - assets/google.svg
     - animation_assets/background.json
     - animation_assets/loading.json
+    - animation_assets/signup_background.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -62,34 +60,6 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
 
   }
 
-  String? fullname;
-
-  
-  void _getUserInfo()async{
-    User? user = FirebaseAuth.instance.currentUser;
-    if(user != null){
-      String email = user.email ?? '';
-
-      var snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('email', isEqualTo: email)
-          .get();
-
-      if(snapshot.docs.isNotEmpty){
-        var userData = snapshot.docs.first.data();
-        setState(() {
-          fullname = userData['fullname'] ?? 'Unknown User';
-        });
-      } else {
-        print("❌No user data found for email: $email");
-      }
-    }
-    else {
-      print("❌No user is currently logged in.");
-    }
-    
-  }
-
 
   CameraController? _cameraController;
   FaceDetector? _faceDetector;
@@ -140,12 +110,11 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
     _llmAlertService = LlmAlertService(
       openWeatherApiKey: dotenv.env['WEATHER_API_KEY'] ?? '',
       openAiApiKey: dotenv.env['OPENAI_API_KEY'] ?? '',
-      driverName: '${fullname ?? 'Unknown Driver'}',
+      driverName: 'Dimuthu',
     );
     
     _initializeCameraAndDetector();
     fetchWeather();
-    _getUserInfo();
   }
 
   void _initializeAnimations() {
@@ -1303,7 +1272,7 @@ class _FaceDetectionScreenState extends State<FaceDetectionScreen> with TickerPr
       final testMessage = await _llmAlertService.generateContextualAlert(
         blinkRate: 18.5, // Mock blink rate
         closedEyesFrameCount: 25, // Mock closed eyes count
-        noFaceFrameCount: 1, // Mock no face count
+        noFaceFrameCount: 5, // Mock no face count
         drivingMinutes: 45, // Mock driving time
         fallbackMessage: "Test Alert: Please stay alert while driving!",
       );
