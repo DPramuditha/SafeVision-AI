@@ -58,10 +58,10 @@
 ### 📱 **App Interface**
 
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/74038190/212284158-e840e285-664b-44d7-b79b-e264b5e54825.gif" width="400">
+  <img src="assets/screenshot.png" alt="SafeVision App Screenshot" width="600">
 </p>
 
-*Coming Soon: Live demo GIFs showing face detection in action!*
+*Real-time drowsiness detection in action - SafeVision monitoring interface*
 
 </div>
 
